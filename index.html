@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unit-Price Comparer Agent</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <div class="logo-icon">⚖️</div>
+                Unit-Price Comparer Agent
+            </div>
+            <div class="mode-selector">
+                <button class="mode-tab active" onclick="setMode('sandbox')">Sandbox (Local)</button>
+                <button class="mode-tab" onclick="setMode('gemini')">Gemini Live</button>
+                <button class="mode-tab" onclick="setMode('openai')">OpenAI Live</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Left Panel: Configurations & Inputs -->
+        <section class="panel">
+            <h2>Product Parameters</h2>
+            <p class="subtitle">Enter product specifications or select a preset to analyze.</p>
+            
+            <div class="form-group">
+                <label for="freeform">Freeform Query Helper (Optional)</label>
+                <textarea id="freeform" rows="3" placeholder="e.g. Product A: ₹120 for 500g. Product B: ₹95 for 350g. Which is cheaper per kg?"></textarea>
+                <button type="button" class="preset-btn" style="margin-top: 0.5rem; align-self: flex-end;" onclick="parseFreeform()">Parse Query</button>
+            </div>
+
+            <div class="presets">
+                <span style="font-size: 0.8rem; color: var(--text-secondary); align-self: center; margin-right: 0.5rem;">Presets:</span>
+                <button class="preset-btn" onclick="applyPreset(1)">Chips (g vs kg)</button>
+                <button class="preset-btn" onclick="applyPreset(2)">Milk (ml vs Liter)</button>
+                <button class="preset-btn" onclick="applyPreset(3)">Detergent (oz vs lb)</button>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 0.5rem 0;">
+
+            <!-- Product A Form Card -->
+            <div class="card" id="card-prod-a">
+                <div class="card-title">
+                    <span>Product A</span>
+                    <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary)">First Item</span>
+                </div>
+                <div class="product-row">
+                    <div class="form-group">
+                        <label for="name-a">Label</label>
+                        <input type="text" id="name-a" value="Product A" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="price-a">Price (₹ / $)</label>
+                        <input type="text" id="price-a" placeholder="120" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="qty-a">Size</label>
+                        <input type="text" id="qty-a" placeholder="500" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="unit-a">Unit</label>
+                    <select id="unit-a">
+                        <optgroup label="Weight">
+                            <option value="g" selected>Grams (g)</option>
+                            <option value="kg">Kilograms (kg)</option>
+                            <option value="oz">Ounces (oz)</option>
+                            <option value="lb">Pounds (lb/lbs)</option>
+                        </optgroup>
+                        <optgroup label="Volume">
+                            <option value="ml">Milliliters (ml)</option>
+                            <option value="l">Liters (l/liter)</option>
+                            <option value="floz">Fluid Ounces (fl oz)</option>
+                            <option value="gal">Gallons (gal)</option>
+                        </optgroup>
+                        <optgroup label="Discrete">
+                            <option value="pcs">Pieces (pcs)</option>
+                            <option value="units">Units</option>
+                            <option value="packs">Packs</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Product B Form Card -->
+            <div class="card" id="card-prod-b">
+                <div class="card-title">
+                    <span>Product B</span>
+                    <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-secondary)">Second Item</span>
+                </div>
+                <div class="product-row">
+                    <div class="form-group">
+                        <label for="name-b">Label</label>
+                        <input type="text" id="name-b" value="Product B" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="price-b">Price (₹ / $)</label>
+                        <input type="text" id="price-b" placeholder="95" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="qty-b">Size</label>
+                        <input type="text" id="qty-b" placeholder="350" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="unit-b">Unit</label>
+                    <select id="unit-b">
+                        <optgroup label="Weight">
+                            <option value="g" selected>Grams (g)</option>
+                            <option value="kg">Kilograms (kg)</option>
+                            <option value="oz">Ounces (oz)</option>
+                            <option value="lb">Pounds (lb/lbs)</option>
+                        </optgroup>
+                        <optgroup label="Volume">
+                            <option value="ml">Milliliters (ml)</option>
+                            <option value="l">Liters (l/liter)</option>
+                            <option value="floz">Fluid Ounces (fl oz)</option>
+                            <option value="gal">Gallons (gal)</option>
+                        </optgroup>
+                        <optgroup label="Discrete">
+                            <option value="pcs">Pieces (pcs)</option>
+                            <option value="units">Units</option>
+                            <option value="packs">Packs</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Target Comparison Unit -->
+            <div class="form-group">
+                <label for="target-unit">Compare Unit Price Per:</label>
+                <select id="target-unit">
+                    <option value="kg" selected>Kilogram (kg)</option>
+                    <option value="g">Gram (g)</option>
+                    <option value="l">Liter (l)</option>
+                    <option value="ml">Milliliter (ml)</option>
+                    <option value="lb">Pound (lb)</option>
+                    <option value="oz">Ounce (oz)</option>
+                    <option value="pcs">Piece (pcs)</option>
+                </select>
+            </div>
+
+            <!-- API Configuration (Secret) -->
+            <div class="api-config" id="api-panel">
+                <!-- Gemini: key loaded from server .env — no browser input needed -->
+                <div id="gemini-key-status" style="display:none;">
+                    <div style="display:flex; align-items:center; gap:0.6rem; padding:0.6rem 0.8rem; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.35); border-radius:8px;">
+                        <span style="font-size:1.1rem;">🔒</span>
+                        <div>
+                            <div style="font-size:0.82rem; font-weight:600; color:#4ade80;">Gemini key secured</div>
+                            <div style="font-size:0.73rem; color:var(--text-secondary);">Loaded from <code>.env</code> on the server — not visible to the browser.</div>
+                        </div>
+                        <span id="gemini-key-dot" style="width:8px;height:8px;border-radius:50%;background:#4ade80;margin-left:auto;box-shadow:0 0 6px #4ade80;"></span>
+                    </div>
+                </div>
+
+                <!-- OpenAI: key entered by user in browser -->
+                <div id="openai-key-input" style="display:none;">
+                    <span class="badge-demo">OpenAI API Key Required</span>
+                    <div class="form-group">
+                        <label for="api-key">OpenAI API Key</label>
+                        <input type="password" id="api-key" placeholder="sk-...">
+                        <span style="font-size:0.75rem; color:var(--text-secondary); margin-top:0.25rem;">Stored locally in your browser session.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trigger Button -->
+            <button class="btn-primary" id="run-btn" onclick="executeAgent()">
+                <span>Run ReAct Agent</span>
+                <span id="run-icon">🚀</span>
+            </button>
+        </section>
+
+        <!-- Right Panel: Agent ReAct Console & Output -->
+        <section class="panel console-panel">
+            <h2>Agent Console Trace</h2>
+            <p class="subtitle" id="console-sub">ReAct Thought/Action/Observation execution logs.</p>
+            
+            <div class="terminal">
+                <div class="terminal-header">
+                    <div class="terminal-dots">
+                        <div class="dot dot-red"></div>
+                        <div class="dot dot-yellow"></div>
+                        <div class="dot dot-green"></div>
+                    </div>
+                    <span>agent_executor.sh</span>
+                </div>
+                <div id="terminal-logs">
+                    <div class="log-entry log-info">System idle. Fill in parameters and click 'Run ReAct Agent'.</div>
+                </div>
+            </div>
+
+            <!-- Visual comparison result (Hidden initially) -->
+            <div class="result-display" id="results-area">
+                <h2>Comparison Output</h2>
+                
+                <div class="verdict-box">
+                    <div class="verdict-title" id="verdict-title">Analysis Completed</div>
+                    <div class="verdict-text" id="verdict-text">Recommendation details will appear here.</div>
+                </div>
+
+                <div class="comparison-grid">
+                    <div class="comp-card" id="card-result-a">
+                        <div class="comp-label" id="result-label-a">Product A</div>
+                        <div class="comp-price-large" id="result-price-a">₹0.00</div>
+                        <div class="comp-label">per normalized unit</div>
+                    </div>
+                    <div class="comp-card" id="card-result-b">
+                        <div class="comp-label" id="result-label-b">Product B</div>
+                        <div class="comp-price-large" id="result-price-b">₹0.00</div>
+                        <div class="comp-label">per normalized unit</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 style="font-size: 0.95rem; font-weight: 600; font-family: 'Outfit', sans-serif;">Unit Price Comparison Chart</h3>
+                    <div class="chart-bar-row">
+                        <div class="chart-bar-info">
+                            <span id="chart-name-a">Product A</span>
+                            <span id="chart-val-a">₹0.00</span>
+                        </div>
+                        <div class="chart-bar-bg">
+                            <div class="chart-bar-fill prod-a" id="chart-fill-a"></div>
+                        </div>
+                    </div>
+                    <div class="chart-bar-row">
+                        <div class="chart-bar-info">
+                            <span id="chart-name-b">Product B</span>
+                            <span id="chart-val-b">₹0.00</span>
+                        </div>
+                        <div class="chart-bar-bg">
+                            <div class="chart-bar-fill prod-b" id="chart-fill-b"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        © 2026 Unit-Price Comparer Agent Dashboard. Built using Vanilla CSS & ReAct agent architecture.
+    </footer>
+
+    <script src="agent.js"></script>
+    <script>
+        let currentMode = 'sandbox';
+
+        // Set mode selector logic
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.remove('active'));
+            
+            // Find active tab and set active
+            let activeIdx = (mode === 'sandbox') ? 0 : (mode === 'gemini' ? 1 : 2);
+            document.querySelectorAll('.mode-tab')[activeIdx].classList.add('active');
+
+            const apiPanel = document.getElementById('api-panel');
+            const geminiStatus = document.getElementById('gemini-key-status');
+            const openaiInput  = document.getElementById('openai-key-input');
+            const apiKeyInput  = document.getElementById('api-key');
+
+            if (mode === 'sandbox') {
+                // Sandbox: no key needed
+                apiPanel.classList.remove('visible');
+                geminiStatus.style.display = 'none';
+                openaiInput.style.display  = 'none';
+            } else if (mode === 'gemini') {
+                // Gemini: key is server-side in .env, show lock badge only
+                apiPanel.classList.add('visible');
+                geminiStatus.style.display = 'block';
+                openaiInput.style.display  = 'none';
+            } else {
+                // OpenAI: key entered by user in browser
+                apiPanel.classList.add('visible');
+                geminiStatus.style.display = 'none';
+                openaiInput.style.display  = 'block';
+                if (apiKeyInput) {
+                    apiKeyInput.value = localStorage.getItem('OPENAI_API_KEY') || '';
+                }
+            }
+        }
+
+        // Apply pre-configured test cases
+        function applyPreset(id) {
+            const freeform = document.getElementById('freeform');
+            if (id === 1) {
+                freeform.value = "Product A: ₹120 for 500g. Product B: ₹95 for 350g. Which is cheaper per kg?";
+            } else if (id === 2) {
+                freeform.value = "Product A: ₹60 for 500ml. Product B: ₹110 for 1 liter. Which is cheaper per liter?";
+            } else if (id === 3) {
+                freeform.value = "Product A: $14 for 96oz. Product B: $18 for 8lbs. Which is cheaper per lb?";
+            }
+            parseFreeform();
+        }
+
+        // Extract parameters from freeform query
+        function parseFreeform() {
+            const query = document.getElementById('freeform').value;
+            if (!query.trim()) return;
+
+            const parsed = parseFreeformQuery(query);
+            
+            document.getElementById('name-a').value = parsed.nameA;
+            document.getElementById('price-a').value = parsed.priceA;
+            document.getElementById('qty-a').value = parsed.qtyA;
+            document.getElementById('unit-a').value = parsed.unitA;
+
+            document.getElementById('name-b').value = parsed.nameB;
+            document.getElementById('price-b').value = parsed.priceB;
+            document.getElementById('qty-b').value = parsed.qtyB;
+            document.getElementById('unit-b').value = parsed.unitB;
+
+            document.getElementById('target-unit').value = parsed.targetUnit;
+
+            // Log action in terminal
+            clearLogs();
+            appendLog({ type: 'info', text: 'Parsed freeform query and populated product inputs successfully.' });
+        }
+
+        // Terminal Log bindings
+        function clearLogs() {
+            document.getElementById('terminal-logs').innerHTML = '';
+        }
+
+        function appendLog(log) {
+            const logsContainer = document.getElementById('terminal-logs');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            if (log.type === 'thought') {
+                entry.className += ' log-thought';
+                entry.innerHTML = `<strong>Thought:</strong> ${log.text}`;
+            } else if (log.type === 'action') {
+                entry.className += ' log-action';
+                entry.innerHTML = `<strong>Action:</strong> ⚙️ ${log.text}`;
+            } else if (log.type === 'observation') {
+                entry.className += ' log-observation';
+                entry.innerHTML = `<strong>Observation:</strong> ${log.text}`;
+            } else if (log.type === 'answer') {
+                entry.className += ' log-answer';
+                entry.innerHTML = `<strong>Final Answer:</strong> ${log.text}`;
+            } else if (log.type === 'error') {
+                entry.className += ' log-error';
+                entry.innerHTML = `<strong>Error:</strong> ❌ ${log.text}`;
+            } else {
+                entry.className += ' log-info';
+                entry.innerHTML = log.text;
+            }
+            
+            logsContainer.appendChild(entry);
+            
+            // Auto scroll to bottom
+            const terminal = document.querySelector('.terminal');
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Execute ReAct agent loop
+        async function executeAgent() {
+            // Validation
+            const priceA = document.getElementById('price-a').value;
+            const qtyA = document.getElementById('qty-a').value;
+            const priceB = document.getElementById('price-b').value;
+            const qtyB = document.getElementById('qty-b').value;
+
+            if (!priceA || !qtyA || !priceB || !qtyB) {
+                alert("Please fill in price and quantity values for both products!");
+                return;
+            }
+
+            // Resolve API key:
+            // - Gemini: key is loaded server-side from .env (no browser input)
+            // - OpenAI: key is entered by the user in the browser
+            let apiKey = '';
+            if (currentMode === 'openai') {
+                apiKey = document.getElementById('api-key')?.value || '';
+                if (!apiKey.trim()) {
+                    alert("Please provide a valid OpenAI API key!");
+                    return;
+                }
+                localStorage.setItem('OPENAI_API_KEY', apiKey);
+            }
+            // For Gemini mode: apiKey remains '' — the proxy handles it server-side
+
+            // Disable controls during execution
+            const runBtn = document.getElementById('run-btn');
+            const runIcon = document.getElementById('run-icon');
+            runBtn.disabled = true;
+            runIcon.className = 'spinner';
+            runIcon.innerText = '';
+            
+            // Hide previous results
+            document.getElementById('results-area').classList.remove('visible');
+            clearLogs();
+
+            const agentData = {
+                nameA: document.getElementById('name-a').value || 'Product A',
+                priceA: priceA,
+                qtyA: qtyA,
+                unitA: document.getElementById('unit-a').value,
+                nameB: document.getElementById('name-b').value || 'Product B',
+                priceB: priceB,
+                qtyB: qtyB,
+                unitB: document.getElementById('unit-b').value,
+                targetUnit: document.getElementById('target-unit').value
+            };
+
+            const callback = (res) => {
+                // Re-enable run controls
+                runBtn.disabled = false;
+                runIcon.className = '';
+                runIcon.innerText = '🚀';
+
+                if (res.success) {
+                    displayResults(res, agentData);
+                }
+            };
+
+            if (currentMode === 'sandbox') {
+                await runLocalSandboxAgent(agentData, appendLog, callback);
+            } else if (currentMode === 'gemini') {
+                const queryText = `Product A (${agentData.nameA}): ₹${agentData.priceA} for ${agentData.qtyA}${agentData.unitA}. Product B (${agentData.nameB}): ₹${agentData.priceB} for ${agentData.qtyB}${agentData.unitB}. Which is cheaper per ${agentData.targetUnit}?`;
+                await runGeminiAgent(apiKey, queryText, appendLog, callback);
+            } else if (currentMode === 'openai') {
+                const queryText = `Product A (${agentData.nameA}): ₹${agentData.priceA} for ${agentData.qtyA}${agentData.unitA}. Product B (${agentData.nameB}): ₹${agentData.priceB} for ${agentData.qtyB}${agentData.unitB}. Which is cheaper per ${agentData.targetUnit}?`;
+                await runOpenAIAgent(apiKey, queryText, appendLog, callback);
+            }
+        }
+
+        // Render graphical and structured outcomes
+        function displayResults(res, data) {
+            const resultsArea = document.getElementById('results-area');
+            const verdictTitle = document.getElementById('verdict-title');
+            const verdictText = document.getElementById('verdict-text');
+            const priceA_display = document.getElementById('result-price-a');
+            const priceB_display = document.getElementById('result-price-b');
+            const labelA_display = document.getElementById('result-label-a');
+            const labelB_display = document.getElementById('result-label-b');
+
+            const valA = res.valA;
+            const valB = res.valB;
+            const unit = data.targetUnit;
+
+            labelA_display.innerText = data.nameA;
+            labelB_display.innerText = data.nameB;
+
+            priceA_display.innerText = valA ? `₹${valA.toFixed(2)}` : 'N/A';
+            priceB_display.innerText = valB ? `₹${valB.toFixed(2)}` : 'N/A';
+
+            // Reset Winner classes
+            const cardA = document.getElementById('card-result-a');
+            const cardB = document.getElementById('card-result-b');
+            cardA.className = 'comp-card';
+            cardB.className = 'comp-card';
+
+            if (res.winner === 'A') {
+                verdictTitle.innerText = `${data.nameA} is Cheaper!`;
+                verdictTitle.style.color = 'var(--success-color)';
+                cardA.className += ' winner';
+            } else if (res.winner === 'B') {
+                verdictTitle.innerText = `${data.nameB} is Cheaper!`;
+                verdictTitle.style.color = 'var(--success-color)';
+                cardB.className += ' winner';
+            } else {
+                verdictTitle.innerText = `Equal Value / Tie`;
+                verdictTitle.style.color = 'var(--warning-color)';
+            }
+
+            verdictText.innerText = res.verdict;
+
+            // Draw Charts
+            document.getElementById('chart-name-a').innerText = data.nameA;
+            document.getElementById('chart-name-b').innerText = data.nameB;
+            document.getElementById('chart-val-a').innerText = valA ? `₹${valA.toFixed(2)} / ${unit}` : 'N/A';
+            document.getElementById('chart-val-b').innerText = valB ? `₹${valB.toFixed(2)} / ${unit}` : 'N/A';
+
+            // Calculate percentage lengths
+            if (valA && valB) {
+                const maxVal = Math.max(valA, valB);
+                const fillA = document.getElementById('chart-fill-a');
+                const fillB = document.getElementById('chart-fill-b');
+
+                // Animate bars
+                fillA.style.width = '0%';
+                fillB.style.width = '0%';
+                
+                setTimeout(() => {
+                    fillA.style.width = `${(valA / maxVal) * 100}%`;
+                    fillB.style.width = `${(valB / maxVal) * 100}%`;
+                }, 100);
+            }
+
+            resultsArea.classList.add('visible');
+        }
+
+        // Initialize state on load
+        setMode('sandbox');
+        applyPreset(1);
+
+        // Check server health: verify GEMINI_API_KEY is configured
+        (async () => {
+            try {
+                const r = await fetch('/api/health');
+                if (r.ok) {
+                    const data = await r.json();
+                    const dot = document.getElementById('gemini-key-dot');
+                    if (dot && !data.gemini_key_configured) {
+                        dot.style.background = '#f87171';
+                        dot.style.boxShadow = '0 0 6px #f87171';
+                        const badge = dot.closest('div[style]');
+                        if (badge) badge.style.borderColor = 'rgba(248,113,113,0.35)';
+                        const label = document.querySelector('#gemini-key-status [style*="4ade80"]');
+                        if (label) { label.style.color = '#f87171'; label.innerText = 'Gemini key NOT set'; }
+                    }
+                }
+            } catch(_) {
+                // Server not running — only affects live Gemini mode
+            }
+        })();
+    </script>
+</body>
+</html>

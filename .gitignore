@@ -1,0 +1,13 @@
+# .gitignore — Unit-Price Comparer
+# -----------------------------------------------
+# Secret files — NEVER commit these
+# -----------------------------------------------
+.env
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
